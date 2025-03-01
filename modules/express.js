@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer'); //Responsável por arquivo.
 const path = require('path');
 const fs = require('fs');
+const pdf = require('pdf-parse');
 
 const app = express();
 const port = 8080;
@@ -21,7 +22,7 @@ const storage = multer.diskStorage({
 //////////////////////////////////////////////
 // Cria o diretório de uploads se não existir
 const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)){
+if (!fs. existsSync(uploadDir)){
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
@@ -47,12 +48,31 @@ app.post('/upload-pdf', upload.single('pdf'), (req, res) => {
   });
 
   
-app.post("/uploadpdf", upload.single('pdf'), (req, res) => { 
+app.post("/uploadpdf", upload.single('pdf'), async (req, res) => { 
     if (!req.file) {
         return res.status(400).send('Nenhum arquivo foi enviado.');
     }
     console.log(req.file.filename)
     console.log(req.file.path)
+    console.log(req.file.buffer)
+
+    const filePath = req.file.path;
+    const dataBuffer = fs.readFileSync(filePath);
+
+    try {
+          const data = await pdf(dataBuffer);
+          console.log(data.text)
+    
+          // Retorna o texto extraído como JSON
+          res.status(200).json({ text: data.text });
+          // Opcional: Remover o arquivo temporário após o processamento
+          await fs.promises.unlink(req.file.path)
+          return data.text;
+          
+        } catch (error) {
+          throw new Error(`Erro ao processar PDF: ${error.message}`);
+        }
+    
 })
 //////////////////////-/////////////////////
 
